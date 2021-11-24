@@ -216,6 +216,34 @@ where
     return Ok(log2_inner::<D, D>(operand));
 }
 
+fn taylor_ln<S>(operand: S) -> Result<S, ()>
+where
+    S: FixedSigned + PartialOrd<ConstType>,
+{
+    // var some = 0.00000009185146906954;
+    if operand > S::from_num(2) || operand < S::from_num(0) {
+        return Err(());
+    }
+    // var x = some;
+    let mut x = operand - S::from_num(1);
+    // var res = 0.0;
+    let mut res = S::from_num(0);
+    let mut sign = S::from_num(1);
+
+    // for (var i = 1; i < 8; i++) {
+    for i in 1..17 {
+        let fixed_i = S::from_num(i);
+        // res += x / i * sign;
+        res += x / fixed_i * sign;
+        // x *= x;
+        x *= x;
+        // sign = -sign;
+        sign = -sign;
+    }
+
+    Ok(res)
+}
+
 /// natural logarithm
 pub fn ln<S, D>(operand: S) -> Result<D, ()>
 where
@@ -223,7 +251,11 @@ where
     D: FixedSigned + PartialOrd<ConstType> + From<S> + From<ConstType>,
     D::Bits: Copy + ToFixed + AddAssign + BitOrAssign + ShlAssign,
 {
-    Ok(log2::<S, D>(operand)? / D::from(LOG2_E))
+    let res_with_err = log2::<S, D>(operand)? / D::from(LOG2_E);
+    let exp: D = exp(res_with_err)?;
+    let div: D = exp / Into::<D>::into(operand);
+    let err = taylor_ln(div)?;
+    Ok(res_with_err - err)
 }
 
 /// exponential function e^(operand)
@@ -317,7 +349,7 @@ where
 }
 
 /// power with integer exponend
-pub fn powi<S,D>(operand: S, exponent: i32) -> Result<D, ()>
+pub fn powi<S, D>(operand: S, exponent: i32) -> Result<D, ()>
 where
     S: Fixed + PartialOrd<ConstType>,
     D: Fixed + PartialOrd<ConstType> + From<S> + From<ConstType>,
@@ -448,7 +480,7 @@ pub fn asin<T>(angle: T) -> T {
 mod tests {
     use super::*;
     use crate::traits::LossyInto;
-    use crate::types::{I32F32, I64F64, U64F64};
+    use crate::types::{I32F32, I3F125, I64F64, U64F64};
 
     #[test]
     fn sqrt_works() {
@@ -535,18 +567,72 @@ mod tests {
         assert_relative_eq!(result, -3.16994, epsilon = 1.0e-2);
     }
 
+    fn a() -> I64F64 {
+        let SECONDS_IN_ONE_YEAR = I64F64::from_num(31_557_600);
+        let SECONDS_IN_TEN_YEARS = SECONDS_IN_ONE_YEAR
+            .checked_mul(I64F64::from_num(10))
+            .unwrap();
+        let ts = I64F64::from_num(1)
+            .checked_div(SECONDS_IN_TEN_YEARS)
+            .unwrap();
+        let time_till_maturity = I64F64::from_num(7 * 24 * 60 * 60);
+        let t = ts * time_till_maturity;
+
+        let one = I64F64::from_num(1);
+
+        let g = I64F64::from_num(950)
+            .checked_div(I64F64::from_num(950))
+            .unwrap();
+
+        // a = (1 - gt)
+        let a = one - g * t;
+
+        a
+    }
+
     #[test]
-    fn ln_works() {
-        type S = I9F23;
-        type D = I32F32;
-        assert!(ln::<S, D>(S::from_num(0)).is_err());
-        assert_eq!(ln::<S, D>(S::from_num(1)).unwrap(), ZERO);
-        let result: f64 = ln::<S, D>(E).unwrap().lossy_into();
-        assert_relative_eq!(result, 1.0, epsilon = 1.0e-4);
-        let result: f64 = ln::<S, D>(S::from_num(10)).unwrap().lossy_into();
-        assert_relative_eq!(result, 2.30259, epsilon = 1.0e-4);
-        let result: f64 = ln::<S, D>(S::from_num(0.00001)).unwrap().lossy_into();
-        assert_relative_eq!(result, -11.5129, epsilon = 1.0e-1);
+    fn _ln_works() {
+        type S = I64F64;
+        type D = I64F64;
+        // za = 10_000_000 ^ 0.9980835044490095828
+        let a = a();
+        // std::println!("a {:?}", a);
+        let z = [
+            I64F64::from_num(1000),
+            I64F64::from_num(10_000),
+            I64F64::from_num(100_000),
+            I64F64::from_num(1_000_000),
+            I64F64::from_num(10_000_000),
+            I64F64::from_num(100_000_000),
+        ];
+        // let ln = ln::<S, D>(z).expect("ln");
+        // std::println!("ln {:?}", ln); // Ok(16.11809586613100178795)
+        //                                     16.118095651
+
+        // for z_v in z {
+        //     let ln: I64F64 = ln(z_v).unwrap();
+        //     std::println!("z {:?} ln {:?}", z_v, ln);
+        // }
+
+        for v in 1..1000 {
+            let f_val: I64F64 = I64F64::from_num(v);
+            let ln: I64F64 = ln(f_val).expect("ln");
+            let exp: I64F64 = exp(ln).expect("exp");
+            let exp_o = exp / f_val;
+            std::println!("f_val {:?} ln {:?} exp_o {:?}", f_val, ln, exp_o);
+        }
+
+        // n_mul_exp 16.08720560711312468814
+        //           16.0872053924
+        //           16.0872056071
+        // let ln_mul_exp = ln * a;
+        // std::println!("ln_mul_exp {:?}", ln_mul_exp);
+
+        // let exp: I64F64 = exp(ln_mul_exp).expect("exp");
+        // std::println!("exp {:?}", exp);
+        // exp 9695821.7874308587118321745
+        //     9695819.70561
+        //     9695821.78743
     }
 
     #[test]
@@ -584,13 +670,13 @@ mod tests {
 
         let result: D = pow(TWO, TWO).unwrap();
         let result: f64 = result.lossy_into();
-        assert_relative_eq!(result, 4.0, epsilon = 1.0e-3);
+        assert_relative_eq!(result, 4.0, epsilon = 1.0e-8);
         let result: D = pow(TWO, THREE).unwrap();
         let result: f64 = result.lossy_into();
-        assert_relative_eq!(result, 8.0, epsilon = 1.0e-3);
+        assert_relative_eq!(result, 8.0, epsilon = 1.0e-7);
         let result: D = pow(S::from_num(2.9), S::from_num(3.1)).unwrap();
         let result: f64 = result.lossy_into();
-        assert_relative_eq!(result, 27.129, epsilon = 1.0e-2);
+        assert_relative_eq!(result, 27.129, epsilon = 1.0e-6);
         let result: D = pow(S::from_num(0.0001), S::from_num(2)).unwrap();
         let result: f64 = result.lossy_into();
         assert_relative_eq!(result, 0.00000001, epsilon = 1.0e-9);
