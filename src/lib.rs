@@ -361,7 +361,8 @@ assert_eq!(two_point_75.to_string(), \"2.8\");
 [typenum crate]: https://crates.io/crates/typenum
 ";
             #[repr(transparent)]
-            #[derive(Encode, Decode, scale_info::TypeInfo)]
+            #[derive(Encode, Decode)]
+            #[cfg_attr(feature = "scale-info", derive(dep_scale_info::TypeInfo))]
             pub struct $Fixed<Frac> {
                 bits: $Inner,
                 phantom: PhantomData<Frac>,

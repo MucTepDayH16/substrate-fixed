@@ -23,13 +23,20 @@ autobenches = false
 f16 = ["half"]
 fail-on-warnings = []
 std = []
+scale-info = ["typenum/scale-info", "dep-scale-info"]
 
 [dependencies]
-typenum = { version = "1.15.0", default-features = false, features = ["scale_info"] } 
+typenum = { version = "1.15.0", default-features = false } 
 az = { version = "0.3", optional = true }
 half = { version = "1.4", optional = true }
 serde = { version = "1.0.60", default-features = false, optional = true }
-scale-info = { version = "1.0", default-features = false, features = ["derive"] }
+
+[dependencies.dep-scale-info]
+optional = true
+package = "scale-info"
+default-features = false
+version = "1.0"
+features = ["derive"]
 
 [dependencies.codec]
 default-features = false
