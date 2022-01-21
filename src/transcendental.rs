@@ -317,7 +317,7 @@ where
 }
 
 /// power with integer exponend
-pub fn powi<S, D>(operand: S, exponent: i32) -> Result<D, ()>
+pub fn powi<S,D>(operand: S, exponent: i32) -> Result<D, ()>
 where
     S: Fixed + PartialOrd<ConstType>,
     D: Fixed + PartialOrd<ConstType> + From<S> + From<ConstType>,
