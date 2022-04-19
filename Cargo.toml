@@ -29,7 +29,7 @@ typenum = { version = "1.15.0", default-features = false, features = ["scale_inf
 az = { version = "0.3", optional = true }
 half = { version = "1.4", optional = true }
 serde = { version = "1.0.60", default-features = false, optional = true }
-scale-info = { version = "1.0", default-features = false, features = ["derive"] }
+scale-info = { version = "2.0.1", default-features = false, features = ["derive"] }
 
 [dependencies.codec]
 default-features = false
