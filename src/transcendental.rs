@@ -225,20 +225,18 @@ where
         return Err(());
     }
     // var x = some;
-    let mut x = operand - S::from_num(1);
+    let x = operand - S::from_num(1);
+    let mut x_i = x;
     // var res = 0.0;
     let mut res = S::from_num(0);
-    let mut sign = S::from_num(1);
 
     // for (var i = 1; i < 8; i++) {
     for i in 1..17 {
         let fixed_i = S::from_num(i);
-        // res += x / i * sign;
-        res += x / fixed_i * sign;
-        // x *= x;
-        x *= x;
-        // sign = -sign;
-        sign = -sign;
+        // res += x_i / i * sign;
+        res += x_i / fixed_i;
+        // x_i *= x;
+        x_i *= -x;
     }
 
     Ok(res)
